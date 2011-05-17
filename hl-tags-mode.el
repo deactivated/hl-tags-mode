@@ -1,6 +1,7 @@
 ;;; hl-tags-mode --- Highlight the current SGML tag context
 
 ;; Copyright (c) 2011 Mike Spindel <deactivated@gmail.com>
+;; Modified by Amit J Patel <amitp@cs.stanford.edu> for nxml-mode
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,16 +18,19 @@
 
 ;;; Commentary:
 
-;; hl-tags-mode is a minor mode for SGML editing that highlights the
-;; current start and end tag.
+;; hl-tags-mode is a minor mode for SGML and XML editing that
+;; highlights the current start and end tag.
 ;;
 ;; To use hl-tags-mode, add the following to your .emacs:
 ;;
 ;;   (require 'hl-tags-mode)
 ;;   (add-hook 'sgml-mode-hook (lambda () (hl-tags-mode 1)))
+;;   (add-hook 'nxml-mode-hook (lambda () (hl-tags-mode 1)))
           
-
 ;;; Code:
+
+(eval-when-compile (require 'cl))
+
 
 (defvar hl-tags-start-overlay nil)
 (make-variable-buffer-local 'hl-tags-start-overlay)
@@ -34,28 +38,67 @@
 (defvar hl-tags-end-overlay nil)
 (make-variable-buffer-local 'hl-tags-end-overlay)
 
-(defun hl-tags-context ()
+
+(defun hl-tags-sgml-get-context ()
+  (save-excursion (car (last (sgml-get-context)))))
+
+(defun hl-tags-sgml-pair (ctx)
+  (if ctx (cons (sgml-tag-start ctx) (sgml-tag-end ctx))
+    '(1 . 1)))
+
+(defun hl-tags-context-sgml-mode ()
   (save-excursion
-    (let ((ctx (sgml-get-context)))
-      (and ctx
-           (if (eq (sgml-tag-type (car ctx)) 'close)
-               (cons (sgml-get-context) ctx)
-             (cons ctx (progn
-                         (sgml-skip-tag-forward 1)
-                         (backward-char 1)
-                         (sgml-get-context))))))))
+    (when (looking-at "<") (forward-char 1))
+    (let* ((ctx (hl-tags-sgml-get-context))
+           (boundaries
+            (and ctx (case (sgml-tag-type ctx)
+                       ('empty (cons ctx nil))
+                       ('close
+                        (goto-char (sgml-tag-start ctx))
+                        (cons (hl-tags-sgml-get-context) ctx))
+                       ('open 
+                        (goto-char (sgml-tag-start ctx))
+                        (sgml-skip-tag-forward 1)
+                        (backward-char 1)
+                        (cons ctx (hl-tags-sgml-get-context)))))))
+      (when boundaries
+        (cons (hl-tags-sgml-pair (car boundaries))
+              (hl-tags-sgml-pair (cdr boundaries)))))))
+
+(defun hl-tags-context-nxml-mode ()
+  (condition-case nil
+      (save-excursion
+        (let (start1 end1 start2 end2)
+          (when (looking-at "<") (forward-char))
+          (nxml-up-element 1)
+          (setq end2 (point))
+
+          (nxml-backward-single-balanced-item)
+          (setq start2 (point))
+
+          (nxml-up-element -1)
+          (setq end1 (point))
+
+          (nxml-forward-single-balanced-item)
+          (setq start1 (point))
+
+          (cons (cons start1 end1) (cons start2 end2))))
+    (error nil)))
+
+(defun hl-tags-context ()
+  "Return a pair ((start . end) . (start . end)) containing the
+boundaries of the current start and end tag , or nil."
+  (if (eq major-mode 'nxml-mode)
+      (hl-tags-context-nxml-mode)
+    (hl-tags-context-sgml-mode)))
 
 (defun hl-tags-update ()
   (let ((ctx (hl-tags-context)))
     (if (null ctx)
         (hl-tags-hide)
       (hl-tags-show)
-      (move-overlay hl-tags-end-overlay
-                    (sgml-tag-start (caar ctx))
-                    (sgml-tag-end (caar ctx)))
-      (move-overlay hl-tags-start-overlay
-                    (sgml-tag-start (cadr ctx))
-                    (sgml-tag-end (cadr ctx))))))
+      (move-overlay hl-tags-start-overlay (caar ctx) (cdar ctx))
+      (move-overlay hl-tags-end-overlay (cadr ctx) (cddr ctx)))))
 
 (defun hl-tags-show ()
   (unless hl-tags-start-overlay
@@ -73,8 +116,11 @@
   "Toggle hl-tags-mode."
   nil "" nil
   (if hl-tags-mode
-      (add-hook 'post-command-hook 'hl-tags-update nil t)
+      (progn 
+        (add-hook 'post-command-hook 'hl-tags-update nil t)
+        (add-hook 'change-major-mode-hook 'hl-tags-hide nil t))
     (remove-hook 'post-command-hook 'hl-tags-update t)
+    (remove-hook 'change-major-mode-hook 'hl-tags-hide t)
     (hl-tags-hide)))
 
 
