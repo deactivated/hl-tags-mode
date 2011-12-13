@@ -31,6 +31,23 @@
 
 (eval-when-compile (require 'cl))
 
+(defgroup hl-tags-faces nil
+  "Group for faces of highlite tags mode."
+  :group 'faces)
+
+
+(defface hl-tags-face
+  '((((class color) (background light))
+     :background "turquoise")
+    (((class color) (background dark))
+     :background "steelblue3")
+    (((background dark))
+     :background "grey50")
+    (t
+     :background "gray"))
+  "Show face used for a matching tag in `hl-tags-mode'."
+  :group 'hl-tags-faces)
+
 
 (defvar hl-tags-start-overlay nil)
 (make-variable-buffer-local 'hl-tags-start-overlay)
@@ -104,8 +121,8 @@ boundaries of the current start and end tag , or nil."
   (unless hl-tags-start-overlay
     (setq hl-tags-start-overlay (make-overlay 1 1)
           hl-tags-end-overlay (make-overlay 1 1))
-    (overlay-put hl-tags-start-overlay 'face 'show-paren-match-face)
-    (overlay-put hl-tags-end-overlay 'face 'show-paren-match-face)))
+    (overlay-put hl-tags-start-overlay 'face 'hl-tags-face)
+    (overlay-put hl-tags-end-overlay 'face 'hl-tags-face)))
 
 (defun hl-tags-hide ()
   (when hl-tags-start-overlay
