@@ -31,6 +31,15 @@
 
 (eval-when-compile (require 'cl))
 
+(defgroup hl-tags nil
+  "Highlight the current tag pair in XML and SGML modes."
+  :group 'convenience)
+
+(defface hl-tags-face
+  '((t :inherit highlight))
+  "Face used to highlight matching tags."
+  :group 'hl-tags)
+
 
 (defvar hl-tags-start-overlay nil)
 (make-variable-buffer-local 'hl-tags-start-overlay)
@@ -104,8 +113,8 @@ boundaries of the current start and end tag , or nil."
   (unless hl-tags-start-overlay
     (setq hl-tags-start-overlay (make-overlay 1 1)
           hl-tags-end-overlay (make-overlay 1 1))
-    (overlay-put hl-tags-start-overlay 'face 'show-paren-match-face)
-    (overlay-put hl-tags-end-overlay 'face 'show-paren-match-face)))
+    (overlay-put hl-tags-start-overlay 'face 'hl-tags-face)
+    (overlay-put hl-tags-end-overlay 'face 'hl-tags-face)))
 
 (defun hl-tags-hide ()
   (when hl-tags-start-overlay
