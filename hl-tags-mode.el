@@ -102,12 +102,25 @@ boundaries of the current start and end tag , or nil."
     (hl-tags-context-sgml-mode)))
 
 (defun hl-tags-update ()
-  (let ((ctx (hl-tags-context)))
+  (let* ((ctx (hl-tags-context))
+         (start1 (caar ctx))
+         (end1 (cdar ctx))
+         (start2 (cadr ctx))
+         (end2 (cddr ctx)))
     (if (null ctx)
         (hl-tags-hide)
       (hl-tags-show)
-      (move-overlay hl-tags-start-overlay (caar ctx) (cdar ctx))
-      (move-overlay hl-tags-end-overlay (cadr ctx) (cddr ctx)))))
+      (move-overlay hl-tags-start-overlay start1 end1)
+      (move-overlay hl-tags-end-overlay start2 end2)
+      ; display the matched tag in the minibuffer if they are off screen.
+      (if (hl-tag-off-screen-p start1 end1)
+          (message "Open tag: %s" (buffer-substring start1 end1))
+        (if (hl-tag-off-screen-p start2 end2)
+            (message "Close tag: %s" (buffer-substring start2 end2)))))))
+
+(defun hl-tag-off-screen-p (start end)
+  (or (> start (window-end))
+      (< end (window-start))))
 
 (defun hl-tags-show ()
   (unless hl-tags-start-overlay
