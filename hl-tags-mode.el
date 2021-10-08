@@ -83,15 +83,21 @@
           (setq end2 (point))
 
           (nxml-backward-single-balanced-item)
-          (setq start2 (point))
-
-          (nxml-up-element -1)
-          (setq end1 (point))
-
-          (nxml-forward-single-balanced-item)
           (setq start1 (point))
 
+          (nxml-down-element 1)
+          (setq end1 (point))
+
+          (hl-tags--jump-to-end-of-current-context)
+          (setq start2 (point))
+
           (cons (cons start1 end1) (cons start2 end2))))
+    (error nil)))
+
+(defun hl-tags--jump-to-end-of-current-context ()
+  (condition-case nil
+      (while t
+        (nxml-forward-balanced-item))
     (error nil)))
 
 (defun hl-tags-context ()
